@@ -40,8 +40,8 @@ def run(n,F,A,temp,exp,psf_r,name):
     pos_arr = ps.run(num_src,temp)
 
     #Array with distances from point to all other pixels
-    dist_arr = sd.run(pos_arr,temp)
-
+    dist_arr = sd.run(pos_arr,flux_arr,temp,exp,psf_r)
+    """
     #Load the exposure map
     EXP_map = np.load(exp)
 
@@ -66,10 +66,10 @@ def run(n,F,A,temp,exp,psf_r,name):
         #Do Poisson draw for every pixel on map to get counts, add to running
         #map of the simulated sky
         hold = hold + np.random.poisson(tmp)
-        i += 1
+        i += 1"""
 
     #Save the file as an .npy file
-    np.save(str(name) + ".npy",hold)
+    np.save(str(name) + ".npy",dist_arr)
 
-    hp.mollview(hold, title="PS Monte Carlo")
+    hp.mollview(dist_arr, title="PS Monte Carlo")
     plt.show()

@@ -15,6 +15,7 @@ th_arr = None #The theta coords of all pixels in the map
 ph_arr = None #The phi coords of all pixels in the map
 NSIDE = None #The NSIDE of the Healpix map, found in find_all_coords
 pix_dist = None #Distance of each pixel from the source of interest
+map_arr = None #Array that is used to build the simulated counts map
 
 def find_all_coords(temp):
     """ This goes through whole template and determines the theta and phi for
@@ -71,8 +72,21 @@ def ang_dist(src_hp_index):
         i += 1
     return None
 
+def create_map(flux,EXP_map,psf_r):
+    global pix_dist, map_arr
+    #Calc. PSF based on the distance array for each source
+    PSF_val = psf_r(pix_dist)
+    #Find the integrated value of the PSF for normilization
+    norm = np.max(np.cumsum(PSF_val))
+    #Norm the PSF, multiply by flux and exposure at pixel
+    hold = (PSF_val / norm) * (flux * EXP_map)
+    #Do Poisson draw for every pixel on map to get counts, add to running
+    #map of the simulated sky
+    hold = np.random.poisson(hold)
+    map_arr = map_arr + hold
+    return None
 
-def run(pos_arr,temp):
+def run(pos_arr,flux_arr,temp,exp,psf_r):
     """ Implements the creation of PSF map for each source. Returns a 2D array
         of PSF maps for each source.
 
@@ -80,7 +94,12 @@ def run(pos_arr,temp):
             :param temp: String of templates file name
     """
     #Load in the global variables
-    global th_arr, ph_arr, NSIDE, pix_dist
+    global th_arr, ph_arr, NSIDE, pix_dist, map_arr
+
+    #Load the exposure map
+    EXP_map = np.load(exp)
+
+    map_arr = np.zeros(len(EXP_map))
 
     #Make sure the position array is of type int (sould be Healpix index)
     pos_arr = pos_arr.astype(int)
@@ -91,26 +110,17 @@ def run(pos_arr,temp):
     #Calculate theta and phi for all pixels
     find_all_coords(temp)
 
-    #Find the angular distance for all pixels from first point
-    ang_dist(pos_arr[0])
-
-    #Hold the pixel distances for first source
-    two_d_arr = pix_dist
-
     #Loop, starting at second source, over whole position array, calculating
     #distance arrays for all sources. These 1-D arrays are stacked vertically
     #and returned.
-    ###########################################################################
-    # This part of the code tends to slow down significantly. I think this has
-    # to do with taking up to much memory. We will need to find a better way
-    # to implement this.
-    ###########################################################################
-    i = 1
+
+    i = 0
     while i < len(pos_arr):
         #Find the angular distance for all pixels from first point
         ang_dist(pos_arr[i])
         #Stack the arrays on top of eachother
-        two_d_arr = np.vstack((two_d_arr,pix_dist))
-        #print "Done source " + str(i) + " out of " + str(len(pos_arr))
+        #two_d_arr = np.vstack((two_d_arr,pix_dist))
+        create_map(flux_arr[i],EXP_map,psf_r)
+        #print "Done source " + str(i + 1) + " out of " + str(len(pos_arr))
         i += 1
-    return two_d_arr
+    return map_arr
