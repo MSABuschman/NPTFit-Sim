@@ -9,6 +9,7 @@
 
 import healpy as hp
 import numpy as np
+import matplotlib.pyplot as plt
 
 #Global variables
 th_arr = None #The theta coords of all pixels in the map
@@ -68,14 +69,25 @@ def ang_dist(src_hp_index):
         elif cs <= -1.0:
             cs = -1.0
         #Convert from radians to degrees
-        pix_dist[i] = abs(np.arccos(cs)) * 180./np.pi
+        dist = abs(np.arccos(cs)) * 180./np.pi
+        if dist <= 90:
+            pix_dist[i] = dist
+        else:
+            pix_dist[i] = 0
         i += 1
     return None
 
 def create_map(flux,EXP_map,psf_r):
+    """ Reads in array of distances from the source and using the user defined
+        PSF constructs a simulated counts map by doing Poisson draws.
+
+            :param flux: value of flux for source
+            :param EXP_map: Healpix map of exposure for whole sky
+            :param psf_r: user defined point spread function
+    """
     global pix_dist, map_arr
     #Calc. PSF based on the distance array for each source
-    PSF_val = psf_r(pix_dist)
+    PSF_val = np.abs(psf_r(pix_dist))
     #Find the integrated value of the PSF for normilization
     norm = np.max(np.cumsum(PSF_val))
     #Norm the PSF, multiply by flux and exposure at pixel
@@ -113,6 +125,8 @@ def run(pos_arr,flux_arr,temp,exp,psf_r):
     #Loop, starting at second source, over whole position array, calculating
     #distance arrays for all sources. These 1-D arrays are stacked vertically
     #and returned.
+
+    print "Simulating counts map."
 
     i = 0
     while i < len(pos_arr):

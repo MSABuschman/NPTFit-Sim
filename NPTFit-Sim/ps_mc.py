@@ -14,8 +14,6 @@ import place_source as ps
 import src_dist as sd
 
 import numpy as np
-import healpy as hp
-import matplotlib.pyplot as plt
 
 def run(n,F,A,temp,exp,psf_r,name):
     """ Brings together serveral programs to run point source Monte Carlo by
@@ -41,35 +39,7 @@ def run(n,F,A,temp,exp,psf_r,name):
 
     #Array with distances from point to all other pixels
     dist_arr = sd.run(pos_arr,flux_arr,temp,exp,psf_r)
-    """
-    #Load the exposure map
-    EXP_map = np.load(exp)
-
-    #Takes first source, norm. its PSF, mulitply by flux and exposure, then
-    #do a Poisson draw. Add to hold array wich is a running version of the final
-    #map simulation.
-    PSF_val = psf_r(dist_arr[0])
-    norm = np.max(np.cumsum(PSF_val))
-    hold = (PSF_val / norm) * (flux_arr[0] * EXP_map[int(pos_arr[0])])
-    hold = np.random.poisson(hold)
-
-    #Norms PSF, multiply by flux and exposure, do Poisson draw. Add result for
-    #each source to a running map.
-    i = 1
-    while i < len(dist_arr):
-        #Calc. PSF based on the distance array for each source
-        PSF_val = psf_r(dist_arr[i])
-        #Find the integrated value of the PSF for normilization
-        norm = np.max(np.cumsum(PSF_val))
-        #Norm the PSF, multiply by flux and exposure at pixel
-        tmp = (PSF_val / norm) * (flux_arr[i] * EXP_map[int(pos_arr[i])])
-        #Do Poisson draw for every pixel on map to get counts, add to running
-        #map of the simulated sky
-        hold = hold + np.random.poisson(tmp)
-        i += 1"""
 
     #Save the file as an .npy file
     np.save(str(name) + ".npy",dist_arr)
-
-    hp.mollview(dist_arr, title="PS Monte Carlo")
-    plt.show()
+    print "Done simulation."
