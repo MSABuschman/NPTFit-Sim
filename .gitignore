@@ -1,0 +1,29 @@
+# Data and temporary notebooks
+*.npy
+.ipynb_checkpoints
+psf_dir
+chains
+fermi_data
+fermi_data.tar.gz*
+.coverage
+
+# Package/build directories
+NPTFit.egg-info
+build
+dist
+htmlcov
+
+# Cython output
+*.pyc
+*.so
+*.o
+*.c
+
+# Trailing files
+*~
+*.log
+*.nfs*
+*.swp*
+*.out
+*.core
+*.swo

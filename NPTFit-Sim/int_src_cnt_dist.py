@@ -10,7 +10,7 @@
 import numpy as np
 
 ## GLOBAL VARIABLES ##
-coef = 1 #running coefficant
+coef = None #running coefficant
 term_arr = None #array to store terms of integration
 i = 0 #place holder for recursion steps
 
@@ -37,18 +37,16 @@ def recur(n,F):
     #Calc. coef. common to all terms
     c = np.power( float(1 - n[i]), -1 )
 
-    #Determine if first term
-    if i == len(n) - 1:
-        term_arr[i] = 1* c * F[i - 1]
-    #Determine if last term
-    elif i == 0:
+    #Determine if first term (index above the highest break)
+    if i == 0:
         term_arr[i] = - 1 * c * F[i]
-    #Otherwise, it must be middle terms
+    #Determine if last term (index below lowest break)
+    if i == len(n) - 1:
+        term_arr[i] = coef[i] * c * F[i - 1]
+    #Otherwise, it must be the middle terms
     else:
-        coef = coef * np.power(F[i] / F[i - 1], -1*n[i])
-        coef = coef * c
-        f = np.power( F[i], 1 - n[i])/np.power(F[i - 1],-1*n[i])
-        term_arr[i] = coef * f - F[i - 1]
+        coef[i:] *= np.power(F[i] / F[i - 1], -1*n[i])
+        term_arr[i] = c * (coef[i-1] * F[i-1] - coef[i] * F[i])
     #index i to contiue recursion
     i += 1
     #returns int. terms when i is larger than len(n) - 1
@@ -64,29 +62,30 @@ def run(n,F,A,temp):
             :param temp: String with name of template     
     """
     #Read in the global variable
-    global term_arr
+    global term_arr, coef
 
-    #Make empty numpy array of len(n)
+    #Make empty numpy array of len(n), and ones for coef
     term_arr = np.zeros(len(n))
+    coef = np.ones(len(n))
 
     #Start recursion function, and sum terms
     #Returns final integral function, i.e. number of sources
     runInt = recur(n,F)
 
     #Sum terms to calculate value of integral
-    intgrl =  sum(runInt)
+    intgrl = sum(runInt)
 
     #Combine normilization and integral. A is in log space, is converted to lin.
     coef = np.power(10.0,A) * intgrl
 
     #Load in the template map
-    gce_map = np.load(str(temp))
+    temp_map = np.load(str(temp))
 
     #Sum the pixels of the map
-    gce_sum = np.sum(gce_map)
+    temp_sum = np.sum(temp_map)
 
     #Multiply through to get total expected sources from template
-    exp_num = coef * gce_sum
+    exp_num = coef * temp_sum
 
     pois_draw = np.random.poisson(exp_num)
 
