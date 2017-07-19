@@ -61,7 +61,7 @@ def run(n,F,A,temp):
             :param A: log10 norm. coef. for the SCD
             :param temp: String with name of template     
     """
-    #Read in the global variable
+    #Read in the global variables
     global term_arr, coef
 
     #Make empty numpy array of len(n), and ones for coef
