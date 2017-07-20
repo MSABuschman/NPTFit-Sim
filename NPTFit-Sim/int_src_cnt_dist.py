@@ -41,7 +41,7 @@ def recur(n,F):
     if i == 0:
         term_arr[i] = - 1 * c * F[i]
     #Determine if last term (index below lowest break)
-    if i == len(n) - 1:
+    elif i == len(n) - 1:
         term_arr[i] = coef[i] * c * F[i - 1]
     #Otherwise, it must be the middle terms
     else:
