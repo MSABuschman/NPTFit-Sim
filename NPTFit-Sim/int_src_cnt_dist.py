@@ -52,14 +52,14 @@ def recur(n,F):
     #returns int. terms when i is larger than len(n) - 1
     return recur(n,F)
 
-def run(n,F,A,temp):
+def run(n,F,A,temp_map):
     """ Function to run calc. of number of sources for a template give a source
         count distribution.
 
             :param n: numpy array of indexes
             :param F: numpy array of Flux breaks
             :param A: log10 norm. coef. for the SCD
-            :param temp: String with name of template     
+            :param temp_map: numpy array of template     
     """
     #Read in the global variables
     global term_arr, coef
@@ -78,17 +78,12 @@ def run(n,F,A,temp):
     #Combine normilization and integral. A is in log space, is converted to lin.
     coef = np.power(10.0,A) * intgrl
 
-    #Load in the template map
-    temp_map = np.load(str(temp))
-
     #Sum the pixels of the map
     temp_sum = np.sum(temp_map)
 
     #Multiply through to get total expected sources from template
     exp_num = coef * temp_sum
-
-    pois_draw = np.random.poisson(exp_num)
-
     #Do a Poisson draw, where exp_num is the mean
+    pois_draw = np.random.poisson(exp_num)
     print "Number of sources from Poisson draw: " + str(pois_draw)
     return pois_draw

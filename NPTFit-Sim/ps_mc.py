@@ -35,10 +35,10 @@ def run(n,F,A,temp,exp,psf_r,name):
     flux_arr = cf.run(num_src,n,F)
 
     #Make array of source positions based on template
-    pos_arr = ps.run(num_src,temp)
+    #pos_arr = ps.run(num_src,temp)
 
-    #Array with distances from point to all other pixels
-    dist_arr = sd.run(pos_arr,flux_arr,temp,exp,psf_r)
+    #Generates simulated counts map
+    dist_arr = sd.run(num_src,flux_arr,temp,exp,psf_r)
 
     #Save the file as an .npy file
     np.save(str(name) + ".npy",dist_arr)

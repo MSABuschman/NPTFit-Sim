@@ -17,13 +17,10 @@ def run(N,temp):
         template given by user. Returns array of length N with Healpix indexes.
 
             :params N: number of source positions to draw
-            :params temp: String for the file name of template
+            :params temp: numpy array of template
     """
 
     print "Determining locations for sources."
-
-    #Load in the Healpix template map
-    temp = np.load(temp)
 
     #Determine the length of the Healpix array 
     L = len(temp)
