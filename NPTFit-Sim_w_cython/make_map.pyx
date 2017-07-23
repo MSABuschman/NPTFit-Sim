@@ -74,18 +74,19 @@ cdef double[::1] ang_dist(double th, double ph, double[::1] th_arr,
 cdef double[::1] create_map(double flux, double[::1] EXP_map,psf_r,
                             double[::1] pix_dist):
     """ Reads in array of distances from the source and using the user defined
-        PSF constructs a simulated counts map by doing Poisson draws.
+        PSF constructs a simulated counts map that will be Poisson drawn from.
 
             :param flux: value of flux for source
             :param EXP_map: Healpix map of exposure for whole sky
             :param psf_r: user defined point spread function
             :param pix_dist: array of pixel distances from source location
 
-            :returns: array of counts from a source prior ro Pois. draw
+            :returns: array of counts from a source prior to Pois. draw
     """
+
     # Calc. PSF based on the distance array for each source
     cdef double [::1] PSF_val = psf_r(np.asarray(pix_dist))
-    # Multiply PSF by Jacobian factor
+    # Multiply PSF by Jacobian factor (i.e. times by r)
     PSF_val *= np.asarray(pix_dist)
 
     # Find the integrated value of the PSF for normilization
@@ -101,10 +102,10 @@ cdef double[::1] create_map(double flux, double[::1] EXP_map,psf_r,
 @cython.wraparound(False)
 @cython.cdivision(True)
 @cython.initializedcheck(False)
-cdef long[::1] sum_map(int N,double[::1] flux_arr,double[::1] temp,
+cdef long[::1] sum_map(int N, double[::1] flux_arr, double[::1] temp,
                        double[::1] EXP_map,psf_r, int rsamp):
-    """ Implements the creation of PSF map for each source. Returns a 2D array
-        of PSF maps for each source.
+    """ For a given number of sources and fluxes, PSF, template, and exposure
+        map, create a fake data.
 
             :param N: number of sources
             :param flux_arr: array source fluxes
@@ -115,8 +116,6 @@ cdef long[::1] sum_map(int N,double[::1] flux_arr,double[::1] temp,
 
             :returns: array of simulated counts map
     """
-    # Load in the global variables
-    #global th_arr, ph_arr, pix_dist, map_arr
 
     # Determine the NSIDE of the Healpix map from length of template array
     cdef int NSIDE = hp.npix2nside(len(temp))
@@ -142,12 +141,11 @@ cdef long[::1] sum_map(int N,double[::1] flux_arr,double[::1] temp,
         while i < N:
             # Determine the source position based on given pixel
             ploc = pix_loc[i]
-            th,ph = np.asarray(hp.pix2ang(NSIDE,ploc))
+            th, ph = np.asarray(hp.pix2ang(NSIDE,ploc))
             # Find the angular distance to all pixels, from this pixel
             pix_dist = np.asarray(ang_dist(th,ph,th_arr,ph_arr))
             # Generate simulated counts map for source
             map_arr += np.asarray(create_map(flux_arr[i],EXP_map,psf_r,pix_dist))
-            print "Done source " + str(i + 1) + " out of " + str(N)
             i += 1
     # Otherwise, do rejection sampling method.
     else:
@@ -155,19 +153,19 @@ cdef long[::1] sum_map(int N,double[::1] flux_arr,double[::1] temp,
         while i < N:
             # Determine a source position, in terms of theta and phi, using
             # rejection sampling. 
-            th,ph = np.asarray(rs.run(temp))
+            th, ph = np.asarray(rs.run(temp))
             # Find the angular distance for all pixels from this position
             pix_dist = np.asarray(ang_dist(th,ph,th_arr,ph_arr))
             # Generate simulated counts map for source
             map_arr += np.asarray(create_map(flux_arr[i],EXP_map,psf_r,pix_dist))
-            #print "Done source " + str(i + 1) + " out of " + str(N)
             i += 1
+    
     # Do Poisson draw for every pixel on map to get counts, add to running
     # map of the simulated sky
     cdef long[::1] r_map_arr = np.random.poisson(map_arr)
     return r_map_arr
 
-def run(N,flux_arr,temp,EXP_map,psf_r,rsamp):
+def run(N, flux_arr, temp, EXP_map, psf_r, rsamp):
     """ Python wrapper for simulating counts map from template.
 
             :param N: number of sources
@@ -179,4 +177,5 @@ def run(N,flux_arr,temp,EXP_map,psf_r,rsamp):
 
             :returns: array of simulated counts map
     """
+
     return sum_map(N,flux_arr,temp,EXP_map,psf_r,rsamp)

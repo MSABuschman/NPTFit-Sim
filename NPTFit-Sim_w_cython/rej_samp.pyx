@@ -21,6 +21,7 @@ DTYPE = np.float
 cdef double[::1] coords():
     """ Returns an array of random theta and phi values (in radians).
     """
+
     # Create an empty array to hold position
     cdef double [::1] crds = np.zeros(2,dtype=DTYPE)
     # Choose random float from 0 <= x < 1 twice
@@ -41,6 +42,7 @@ cdef double[::1] reject(double[::1] temp):
 
             :params temp: numpy array corresponding to template
     """
+
     # Determine the NSIDE of the template
     cdef int NSIDE = hp.npix2nside(len(temp))
     cdef double[::1] crds = np.zeros(2)
@@ -67,4 +69,5 @@ def run(double[::1] temp):
 
             :param temp: array representing the template
     """
+
     return reject(temp)
