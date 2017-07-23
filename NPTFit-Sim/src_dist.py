@@ -9,39 +9,14 @@
 
 import healpy as hp
 import numpy as np
-import matplotlib.pyplot as plt
 
 import rej_samp as rs
 
 # Global variables
 th_arr = None # The theta coords of all pixels in the map
 ph_arr = None # The phi coords of all pixels in the map
-NSIDE = None # The NSIDE of the Healpix map, found in find_all_coords
 pix_dist = None # Distance of each pixel from the source of interest
 map_arr = None # Array that is used to build the simulated counts map
-
-def find_all_coords(temp):
-    """ This goes through whole template and determines the theta and phi for
-        each point in the Healpix grid in radians.
-
-            :param temp: numpy array of template
-    """
-    # Load in the three global variables
-    global th_arr, ph_arr, NSIDE
-
-    # Determine the NSIDE of the Healpix map from length of template array
-    NSIDE = hp.npix2nside(len(temp))
-
-    # Make two empty arrays to fill with theta and phi values
-    th_arr = np.zeros(len(temp))
-    ph_arr = np.zeros(len(temp))
-
-    # Loop over whole template and calc. theta and phi for each pixel
-    i = 0
-    while i < len(temp):
-        th_arr[i],ph_arr[i] = hp.pix2ang(NSIDE,i)
-        i += 1
-    return None
 
 def ang_dist(th,ph):
     """ This calculates the angular distance from a given Healpix pixel to all
@@ -51,7 +26,7 @@ def ang_dist(th,ph):
             :param ph: source phi position in radians
     """
     # Load global variables
-    global th_arr, ph_arr, NSIDE, pix_dist
+    global th_arr, ph_arr, pix_dist
 
     # Make an empty numpy array to hold pixel distances from source location.
     pix_dist = np.zeros(len(th_arr))
@@ -68,12 +43,12 @@ def ang_dist(th,ph):
             cs = 1.0
         elif cs <= -1.0:
             cs = -1.0
-        # Convert from radians to degrees
-        dist = abs(np.arccos(cs)) * 180./np.pi
-        if dist <= 90:
+        # Make sure no source is greater than pi radians away
+        dist = abs(np.arccos(cs))
+        if dist <= np.pi:
             pix_dist[i] = dist
         else:
-            pix_dist[i] = 0
+            pix_dist[i] = 2*np.pi - dist
         i += 1
     return None
 
@@ -92,9 +67,6 @@ def create_map(flux,EXP_map,psf_r):
     norm = np.max(np.cumsum(PSF_val))
     # Norm the PSF, multiply by flux and exposure at pixel
     hold = (PSF_val / norm) * (flux * EXP_map)
-    # Do Poisson draw for every pixel on map to get counts, add to running
-    # map of the simulated sky
-    hold = np.random.poisson(hold)
     # Add to running sum of counts on sky
     map_arr = map_arr + hold
     return None
@@ -109,14 +81,17 @@ def run(N,flux_arr,temp,EXP_map,psf_r):
             :param EXP_map: numpy array of exposure map
             :param psf_r: user defined point spread function
     """
-    #Load in the global variables
-    global th_arr, ph_arr, NSIDE, pix_dist, map_arr
+    # Load in the global variables
+    global th_arr, ph_arr, pix_dist, map_arr
+
+    # Determine the NSIDE of the Healpix map from length of template array
+    NSIDE = hp.npix2nside(len(temp))    
+
+    # Find all theta and phi values for pixels in template map
+    th_arr, ph_arr = hp.pix2ang(NSIDE,range(len(temp)))
 
     # Create array to use when sim
     map_arr = np.zeros(len(EXP_map))
-
-    #Calculate theta and phi for all pixels
-    find_all_coords(temp)
 
     print "Simulating counts map."
 
@@ -133,4 +108,7 @@ def run(N,flux_arr,temp,EXP_map,psf_r):
         create_map(flux_arr[i],EXP_map,psf_r)
         #print "Done source " + str(i + 1) + " out of " + str(N)
         i += 1
+    # Do Poisson draw for every pixel on map to get counts, add to running
+    # map of the simulated sky
+    map_arr = np.random.poisson(map_arr)
     return map_arr
