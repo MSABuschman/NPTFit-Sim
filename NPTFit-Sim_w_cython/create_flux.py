@@ -10,8 +10,6 @@
 import numpy as np
 import pdf_sampler
 
-import matplotlib.pyplot as plt
-
 ## Global Variables ##
 i = 1 #index used for facilitating recursion
 hold = 1 #hold running values of coefficent for dN/dF
@@ -69,9 +67,9 @@ def run(N,n,F,lobo=-1,upbo=-1):
 
     #Determine the upper and lower bounds, if not specified go 4 orders up/down
     if lobo == -1:
-        lobo = F[0]*1e-4
+        lobo = F[-1]*1e-4
     if upbo == -1:
-        upbo = F[-1]*1e4
+        upbo = F[0]*1e4
     #Use numpy to sample the distribution, also accounts for log-space w/ Jacob.
     print "Sampling the source count distribution."
     f = np.logspace(np.log10(lobo),np.log10(upbo),1e5)
@@ -80,16 +78,17 @@ def run(N,n,F,lobo=-1,upbo=-1):
     #For each sample of dist, calc corr. dNdF value.
     j = 0
     #Empty Python list to hold dNdF values
-    DNDF = []
+    DNDF = np.zeros(len(f))
     while j < len(f):
-        DNDF.append(dNdF(n,F,f[j]))
+        DNDF[j] = dNdF(n,F,f[j])
         #Reset the two global variables
         i = 1
         hold = 1
         j += 1
-    #Convert Python list to numpy array.
-    DNDF = np.array(DNDF)
+
     #Draw N flux values from the SCD using inversion sampling
     pdf = pdf_sampler.PDFSampler(f, dv * DNDF)
 
-    return pdf(N)
+    x = pdf(N)
+
+    return x

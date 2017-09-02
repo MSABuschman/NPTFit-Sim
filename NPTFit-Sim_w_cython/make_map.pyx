@@ -4,168 +4,101 @@
 #
 # Given a number of sources, array of fluxes for each source, template & 
 # exposure maps, and user defined PSF, simulates and returns a counts map. The
-# user has the option to draw source positions weighted by the template pixels
-# or using a rejection sampling routine. 
+# source positions are determined using a rejection sampling routine.
 #
 ###############################################################################
 
 import healpy as hp
 import numpy as np
+
 cimport numpy as np
 cimport cython
 
 import rej_samp as rs
-import place_source as ps
+import pdf_sampler
 
-# Call in cython functions
 cdef extern from "math.h":
     double cos(double x) nogil
     double sin(double x) nogil
-    double acos(double x) nogil
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.cdivision(True)
 @cython.initializedcheck(False)
-cdef double[::1] ang_dist(double th, double ph, double[::1] th_arr,
-                          double[::1] ph_arr):
-    """ This calculates the angular distance from a given Healpix pixel to all
-        other pixels in degrees.
-
-            :param th: source theta position in radians
-            :param ph: source phi position in radians
-            :param th_arr: array of theta positions of all pixels in map
-            :param ph_arr: array of phi positions of all pixels in map
-
-            :returns: array with distances from source to each pixel in radians
-    """
-
-    # Make an empty numpy array to hold pixel distances from source location.
-    cdef double[::1] pix_dist = np.zeros(len(th_arr))
-
-    cdef double cos_term, sin_term, cs, dist
-
-    # Loops over all pixels and calculates distances from source position
-    cdef int i = 0
-    while i < len(th_arr):
-        # Calc. the angular distance from the two points with some trig.
-        cos_term = cos(th) * cos(th_arr[i])
-        sin_term = sin(th) * sin(th_arr[i]) * cos( ph - ph_arr[i])
-        # Ensure we remain in domain of acos, float addition may go just out of
-        # the domain.
-        cs = cos_term + sin_term
-        if cs >= 1.0:
-            cs = 1.0
-        elif cs <= -1.0:
-            cs = -1.0
-        # Make sure no source is greater than pi radians away
-        dist = abs(acos(cs))
-        if dist <= np.pi:
-            pix_dist[i] = dist
-        else:
-            pix_dist[i] = 2*np.pi - dist
-        i += 1
-    return pix_dist
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
-@cython.cdivision(True)
-@cython.initializedcheck(False)
-cdef double[::1] create_map(double flux, double[::1] EXP_map,psf_r,
-                            double[::1] pix_dist):
-    """ Reads in array of distances from the source and using the user defined
-        PSF constructs a simulated counts map that will be Poisson drawn from.
-
-            :param flux: value of flux for source
-            :param EXP_map: Healpix map of exposure for whole sky
-            :param psf_r: user defined point spread function
-            :param pix_dist: array of pixel distances from source location
-
-            :returns: array of counts from a source prior to Pois. draw
-    """
-
-    # Calc. PSF based on the distance array for each source
-    cdef double [::1] PSF_val = psf_r(np.asarray(pix_dist))
-    # Multiply PSF by Jacobian factor (i.e. times by r)
-    PSF_val *= np.asarray(pix_dist)
-
-    # Find the integrated value of the PSF for normilization
-    cdef double norm = np.sum(PSF_val)
-
-    # Norm the PSF, multiply by flux and exposure at pixel to get counts
-    cdef double[::1] hold = (np.asarray(PSF_val) / norm)
-    hold *= (flux * np.asarray(EXP_map))
-
-    return hold
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
-@cython.cdivision(True)
-@cython.initializedcheck(False)
-cdef long[::1] sum_map(int N, double[::1] flux_arr, double[::1] temp,
-                       double[::1] EXP_map,psf_r, int rsamp):
+cdef double[::1] sum_map(int N, double[::1] flux_arr, double[::1] temp,
+                       double[::1] EXP_map,psf_r):
     """ For a given number of sources and fluxes, PSF, template, and exposure
-        map, create a fake data.
+        map, create a simulated counts map.
 
             :param N: number of sources
             :param flux_arr: array source fluxes
             :param temp: numpy array for template
             :param EXP_map: numpy array of exposure map
             :param psf_r: user defined point spread function
-            :param rsamp: set True for rejection sampling
 
             :returns: array of simulated counts map
     """
-
-    # Determine the NSIDE of the Healpix map from length of template array
     cdef int NSIDE = hp.npix2nside(len(temp))
-    cdef double[::1] th_arr, ph_arr, pix_dist
-    cdef long[::1] pix_loc   
-    cdef int ploc
-    # Find all theta and phi values for pixels in template map
-    th_arr, ph_arr = hp.pix2ang(NSIDE,range(len(temp)))
-
-    # Create array to use when sim
+    cdef int num_phot, i, j, posit
+    cdef np.ndarray[double,ndim=1,mode="c"] dist
     cdef double[::1] map_arr = np.zeros(len(EXP_map))
+    cdef double th, ph
 
     print "Simulating counts map ..."
 
-    # For each source, create a counts map. Keeps running total of counts from
-    # all sources.
-    cdef int i = 0
-    # If no rejection sampleing, sample positions from pixel values in template.
-    if rsamp == 0:
-        print "Sampling template pixels for source positions ..."
-        # Treat template as pdf, draw N weighted pixel positions
-        pix_loc = np.asarray(ps.run(N,temp))
-        while i < N:
-            # Determine the source position based on given pixel
-            ploc = pix_loc[i]
-            th, ph = np.asarray(hp.pix2ang(NSIDE,ploc))
-            # Find the angular distance to all pixels, from this pixel
-            pix_dist = np.asarray(ang_dist(th,ph,th_arr,ph_arr))
-            # Generate simulated counts map for source
-            map_arr += np.asarray(create_map(flux_arr[i],EXP_map,psf_r,pix_dist))
-            i += 1
-    # Otherwise, do rejection sampling method.
-    else:
-        print "Using rejection sampling for source positions ..."
-        while i < N:
-            # Determine a source position, in terms of theta and phi, using
-            # rejection sampling. 
-            th, ph = np.asarray(rs.run(temp))
-            # Find the angular distance for all pixels from this position
-            pix_dist = np.asarray(ang_dist(th,ph,th_arr,ph_arr))
-            # Generate simulated counts map for source
-            map_arr += np.asarray(create_map(flux_arr[i],EXP_map,psf_r,pix_dist))
-            i += 1
-    
-    # Do Poisson draw for every pixel on map to get counts, add to running
-    # map of the simulated sky
-    cdef long[::1] r_map_arr = np.random.poisson(map_arr)
-    return r_map_arr
+    # Sample the radial PSF to later determine placement of photons.
+    f = np.linspace(0,np.pi,1e6)
+    pdf_psf = f * psf_r(f)
+    pdf = pdf_sampler.PDFSampler(f,pdf_psf)
 
-def run(N, flux_arr, temp, EXP_map, psf_r, rsamp):
+    # For each source find a source postions, determine number of photons and 
+    # their positions using angular distances drawn from the radial PSF. Add 
+    # photons to a running counts map array, map_arr.
+    i = 0
+    while i < N:
+        # Find random source position using rejection sampling.
+        th, ph = np.asarray(rs.run(temp))
+
+        # Find expected number of source photons and the do a Poisson draw.
+        num_phot = np.random.poisson(flux_arr[i] * 
+                                    EXP_map[hp.ang2pix(NSIDE,th,ph)])
+
+        # Sample distances from PSF for each source photon.
+        dist = pdf(num_phot)
+
+        # Create a rotation matrix for each source.
+        # Shift phi coord pi/2 to correspond to center of HEALPix map durring
+        # rotation.
+        phm = ph + np.pi/2.
+        # Each source is intially treated as being located at theta=0,phi=0 as 
+        # the drawn PSF distances simply corresponds to photon theta positon.
+        # A random phi value [0,2pi] is then drawn. Each photon is then rotated
+        # about the x axis an angle corresponding to the true theta position of
+        # the source, followed by a rotation about the z axis by the true phi
+        # position plus an additional pi/2 radians.
+        rotx = np.matrix([[1,0,0],[0,cos(th),sin(th)],[0,-sin(th),cos(th)]])
+        rotz = np.matrix([[cos(phm),sin(phm),0],[-sin(phm),cos(phm),0],[0,0,1]])
+
+        j = 0
+        while j < num_phot:
+            # Draw a random phi postion [0,2pi].
+            randPhi = 2*np.pi*np.random.random()
+            # Convert the theta and phi to x,y,z coords.
+            X = np.matrix(hp.ang2vec(dist[j],randPhi)).T
+            # Rotate coords over the x axis.
+            Xp = rotx*X
+            # Rotate again, over the z axis.
+            Xp = rotz*Xp
+            Xp = np.array(Xp)
+            # Determine pixel location from x,y,z values.
+            posit = hp.vec2pix(NSIDE,Xp[0],Xp[1],Xp[2])
+            # Add a count to that pixel on the map.
+            map_arr[posit] += 1
+            j += 1
+        i += 1
+    return map_arr
+
+def run(N, flux_arr, temp, EXP_map, psf_r):
     """ Python wrapper for simulating counts map from template.
 
             :param N: number of sources
@@ -173,9 +106,8 @@ def run(N, flux_arr, temp, EXP_map, psf_r, rsamp):
             :param temp: numpy array for template
             :param EXP_map: numpy array of exposure map
             :param psf_r: user defined point spread function
-            :param rsamp: set to 1 for rejection sampeling
 
             :returns: array of simulated counts map
     """
 
-    return sum_map(N,flux_arr,temp,EXP_map,psf_r,rsamp)
+    return sum_map(N,flux_arr,temp,EXP_map,psf_r)

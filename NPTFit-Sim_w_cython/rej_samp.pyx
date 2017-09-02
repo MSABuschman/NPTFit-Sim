@@ -9,6 +9,7 @@
 
 import numpy as np
 import healpy as hp
+
 cimport numpy as np
 cimport cython
 
@@ -48,7 +49,7 @@ cdef double[::1] reject(double[::1] temp):
     cdef double[::1] crds = np.zeros(2)
     cdef int pos = 0
     cdef double rnd = 0.0
-    # Make max pixel value in template 1 .0 for rejection sampling
+    # Make max pixel value in template 1.0 for rejection sampling
     temp = temp / np.max(temp)
     cdef int i = 0
     while i < 1:
