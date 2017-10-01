@@ -37,7 +37,7 @@ cdef double[::1] coords():
 @cython.wraparound(False)
 @cython.cdivision(True)
 @cython.initializedcheck(False)
-cdef double[::1] reject(double[::1] temp):
+cpdef double[::1] run(double[::1] temp):
     """ Returns a source position from a give template in terms of theta and phi
         (in radians) using rejection sampling. 
 
@@ -64,11 +64,3 @@ cdef double[::1] reject(double[::1] temp):
             i += 1
     # Returns coords
     return crds
-
-def run(double[::1] temp):
-    """ Python wrapper for rejection sampling routine.
-
-            :param temp: array representing the template
-    """
-
-    return reject(temp)

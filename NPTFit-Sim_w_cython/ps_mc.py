@@ -14,7 +14,7 @@ import make_map as mm
 
 import numpy as np
 
-def run(n,F,A,temp,exp,psf_r,name):
+def run(n,F,A,temp,exp,psf_r,name="map",save=False):
     """ Brings together serveral programs to run point source Monte Carlo by
         reading in template, source count distribution parameters, exposure 
         map, and the user defined PSF.
@@ -26,6 +26,7 @@ def run(n,F,A,temp,exp,psf_r,name):
             :param exp: HEALPix numpy array of exposure map
             :param psf_r: user defined point spread function
             :param name: string for the name of output .npy file
+            :param save: option to save map to .npy file
 
             :returns: saves numpy array of simulated map to .npy file
     """
@@ -39,5 +40,9 @@ def run(n,F,A,temp,exp,psf_r,name):
     map_arr = np.asarray(mm.run(num_src,flux_arr,temp,exp,psf_r))
 
     # Save the file as an .npy file.
-    np.save(str(name) + ".npy",map_arr.astype(np.int))
+    if save:
+        np.save(str(name) + ".npy",map_arr.astype(np.int32))
+
     print "Done simulation."
+
+    return map_arr.astype(np.int32)

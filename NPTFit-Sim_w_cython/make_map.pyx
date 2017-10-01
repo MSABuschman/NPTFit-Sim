@@ -25,7 +25,7 @@ cdef extern from "math.h":
 @cython.wraparound(False)
 @cython.cdivision(True)
 @cython.initializedcheck(False)
-cdef double[::1] sum_map(int N, double[::1] flux_arr, double[::1] temp,
+cpdef double[::1] run(int N, double[::1] flux_arr, double[::1] temp,
                        double[::1] EXP_map,psf_r):
     """ For a given number of sources and fluxes, PSF, template, and exposure
         map, create a simulated counts map.
@@ -63,6 +63,7 @@ cdef double[::1] sum_map(int N, double[::1] flux_arr, double[::1] temp,
         num_phot = np.random.poisson(flux_arr[i] * 
                                     EXP_map[hp.ang2pix(NSIDE,th,ph)])
 
+
         # Sample distances from PSF for each source photon.
         dist = pdf(num_phot)
 
@@ -76,8 +77,8 @@ cdef double[::1] sum_map(int N, double[::1] flux_arr, double[::1] temp,
         # about the x axis an angle corresponding to the true theta position of
         # the source, followed by a rotation about the z axis by the true phi
         # position plus an additional pi/2 radians.
-        rotx = np.matrix([[1,0,0],[0,cos(th),sin(th)],[0,-sin(th),cos(th)]])
-        rotz = np.matrix([[cos(phm),sin(phm),0],[-sin(phm),cos(phm),0],[0,0,1]])
+        rotx = np.matrix([[1,0,0],[0,cos(th),-sin(th)],[0,sin(th),cos(th)]])
+        rotz = np.matrix([[cos(phm),-sin(phm),0],[sin(phm),cos(phm),0],[0,0,1]])
 
         j = 0
         while j < num_phot:
@@ -96,18 +97,5 @@ cdef double[::1] sum_map(int N, double[::1] flux_arr, double[::1] temp,
             map_arr[posit] += 1
             j += 1
         i += 1
+
     return map_arr
-
-def run(N, flux_arr, temp, EXP_map, psf_r):
-    """ Python wrapper for simulating counts map from template.
-
-            :param N: number of sources
-            :param flux_arr: array source fluxes
-            :param temp: numpy array for template
-            :param EXP_map: numpy array of exposure map
-            :param psf_r: user defined point spread function
-
-            :returns: array of simulated counts map
-    """
-
-    return sum_map(N,flux_arr,temp,EXP_map,psf_r)

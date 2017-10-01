@@ -89,6 +89,4 @@ def run(N,n,F,lobo=-1,upbo=-1):
     #Draw N flux values from the SCD using inversion sampling
     pdf = pdf_sampler.PDFSampler(f, dv * DNDF)
 
-    x = pdf(N)
-
-    return x
+    return pdf(N)
