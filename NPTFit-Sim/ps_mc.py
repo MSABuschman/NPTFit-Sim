@@ -10,12 +10,11 @@
 
 import int_src_cnt_dist as iscd
 import create_flux as cf
-import place_source as ps
-import src_dist as sd
+import make_map as mm
 
 import numpy as np
 
-def run(n,F,A,temp,exp,psf_r,name):
+def run(n,F,A,temp,exp,psf_r,name="map",save=False):
     """ Brings together serveral programs to run point source Monte Carlo by
         reading in template, source count distribution parameters, exposure 
         map, and the user defined PSF.
@@ -23,23 +22,27 @@ def run(n,F,A,temp,exp,psf_r,name):
             :param n: numpy array of index values
             :param F: numpy array of flux break values
             :param A: float of log10 norm for the SCD
-            :param temp: String for name of template
-            :param exp: String for name of exposure map
-            :param psf_r: User defined point spread function
-            :param name: String for the name of output .npy file
+            :param temp: HEALPix numpy array of template
+            :param exp: HEALPix numpy array of exposure map
+            :param psf_r: user defined point spread function
+            :param name: string for the name of output .npy file
+            :param save: option to save map to .npy file
+
+            :returns: saves numpy array of simulated map to .npy file
     """
-    #int. SCD to find mean couts, Poisson draws for # of sources in template
+    # Int. SCD to find mean couts, Poisson draws for # of sources in template.
     num_src = iscd.run(n,F,A,temp)
 
-    #Draws fluxes for each source from the CSD
+    # Draws fluxes for each source from the CSD.
     flux_arr = cf.run(num_src,n,F)
 
-    #Make array of source positions based on template
-    #pos_arr = ps.run(num_src,temp)
+    # Generate simulated counts map.
+    map_arr = np.asarray(mm.run(num_src,flux_arr,temp,exp,psf_r))
 
-    #Generates simulated counts map
-    dist_arr = sd.run(num_src,flux_arr,temp,exp,psf_r)
+    # Save the file as an .npy file.
+    if save:
+        np.save(str(name) + ".npy",map_arr.astype(np.int32))
 
-    #Save the file as an .npy file
-    np.save(str(name) + ".npy",dist_arr)
     print "Done simulation."
+
+    return map_arr.astype(np.int32)
