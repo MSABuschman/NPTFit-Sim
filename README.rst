@@ -17,7 +17,7 @@ AUTHORS
 INSTALLATION
 ------------
 
-Before using the code, the cython needs to be compiled. To do this enter the directory `NPTFit-Sim` and run the `make.sh` file.
+Before using the code, the cython needs to be compiled. To do this enter the directory ``NPTFit-Sim`` and run the ``make.sh`` file.
 
 EXAMPLES
 --------
