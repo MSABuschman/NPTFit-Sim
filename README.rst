@@ -5,7 +5,7 @@ NPTFit-Sim
 
 Code base for simulating populations of point sources. These are exactly the type of sources that can be searched for using `NPTFit <https://github.com/bsafdi/NPTFit/>`__.
 
-.. figure:: https://github.com/nickrodd/NPTFit-Sim/blob/master/examples/Example_NPTF_Sim.pdf
+.. image:: https://github.com/nickrodd/NPTFit-Sim/blob/master/examples/Example_NPTF_Sim.pdf
    :alt: ExampleMap
 
 AUTHORS
