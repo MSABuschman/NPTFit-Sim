@@ -60,10 +60,12 @@ def run(n,F,A,temp_map):
             :param n: numpy array of indexes
             :param F: numpy array of Flux breaks
             :param A: log10 norm. coef. for the SCD
-            :param temp_map: numpy array of template     
+            :param temp_map: numpy array of template
+
+            :returns: number of sources from Poisson draw   
     """
     # Read in the global variables
-    global term_arr, coef
+    global term_arr, coef, i
 
     # Make empty numpy array of len(n), and ones for coef
     term_arr = np.zeros(len(n))
@@ -76,7 +78,7 @@ def run(n,F,A,temp_map):
     # Sum terms to calculate value of integral
     intgrl = sum(runInt)
 
-    # Combine normilization and integral. A is in log space, is converted to lin.
+    # Combine normilization and integral. A is in log space, is converted to lin
     coef = np.power(10.0,A) * intgrl
 
     # Sum the pixels of the map
@@ -89,4 +91,10 @@ def run(n,F,A,temp_map):
     pois_draw = np.random.poisson(exp_num)
 
     print "Number of sources from Poisson draw: " + str(pois_draw)
+
+    # Reset Global variables in case of multiple calls of function
+    coef = None
+    term_arr = None 
+    i = 0
+
     return pois_draw

@@ -51,7 +51,7 @@ cpdef double[::1] run(int N, double[::1] flux_arr, double[::1] temp,
     pdf_psf = f * psf_r(f)
     pdf = pdf_sampler.PDFSampler(f,pdf_psf)
 
-    # For each source find a source postions, determine number of photons and 
+    # For each source find a source postion, determine number of photons, and 
     # their positions using angular distances drawn from the radial PSF. Add 
     # photons to a running counts map array, map_arr.
     i = 0
@@ -59,7 +59,7 @@ cpdef double[::1] run(int N, double[::1] flux_arr, double[::1] temp,
         # Find random source position using rejection sampling.
         th, ph = np.asarray(rs.run(temp))
 
-        # Find expected number of source photons and the do a Poisson draw.
+        # Find expected number of source photons and then do a Poisson draw.
         num_phot = np.random.poisson(flux_arr[i] * 
                                     EXP_map[hp.ang2pix(NSIDE,th,ph)])
 

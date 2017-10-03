@@ -57,7 +57,7 @@ cpdef double[::1] run(double[::1] temp):
         crds = coords()
         # Find coresponding Healpix pixel
         pos = hp.pixelfunc.ang2pix(NSIDE,crds[0],crds[1])
-        # Choose random float from 0 <= x < 1 twice
+        # Choose random float from 0 <= x < 1
         rnd = np.random.random()
         # If the random number is less that template value, accept coords
         if rnd <= temp[pos]:
