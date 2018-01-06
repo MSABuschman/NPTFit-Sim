@@ -25,8 +25,8 @@ cdef extern from "math.h":
 @cython.wraparound(False)
 @cython.cdivision(True)
 @cython.initializedcheck(False)
-cpdef double[::1] run(int N, double[::1] flux_arr, double[::1] temp,
-                       double[::1] EXP_map,psf_r):
+cpdef double[:,::1] run(int N, double[::1] flux_arr, double[::1] temp,
+                       double[::1] EXP_map,psf_r,double[::1] Ebins, Edep, double[::1] Eparam):
     """ For a given number of sources and fluxes, PSF, template, and exposure
         map, create a simulated counts map.
 
@@ -35,13 +35,15 @@ cpdef double[::1] run(int N, double[::1] flux_arr, double[::1] temp,
             :param temp: numpy array for template
             :param EXP_map: numpy array of exposure map
             :param psf_r: user defined point spread function
+            :param Ebins: numpy array of energy bin edges
+            :param Edep: user defined energy dependence
 
-            :returns: array of simulated counts map
+            :returns: array of simulated counts maps
     """
     cdef int NSIDE = hp.npix2nside(len(temp))
     cdef int num_phot, i, j, posit
     cdef np.ndarray[double,ndim=1,mode="c"] dist
-    cdef double[::1] map_arr = np.zeros(len(EXP_map))
+    cdef double[:,::1] map_arr = np.zeros((len(Ebins),len(EXP_map)))
     cdef double th, ph
 
     print "Simulating counts map ..."
@@ -50,6 +52,11 @@ cpdef double[::1] run(int N, double[::1] flux_arr, double[::1] temp,
     f = np.linspace(0,np.pi,1e6)
     pdf_psf = f * psf_r(f)
     pdf = pdf_sampler.PDFSampler(f,pdf_psf)
+
+    # Sample Energy dependence PDF
+    E = np.linspace(Ebins[0],Ebins[len(Ebins)-1],1e6)
+    pdf_E = Edep(E,Eparam)
+    pdf_E_samp = pdf_sampler.PDFSampler(E,pdf_E)
 
     # For each source find a source postion, determine number of photons, and 
     # their positions using angular distances drawn from the radial PSF. Add 
@@ -64,8 +71,10 @@ cpdef double[::1] run(int N, double[::1] flux_arr, double[::1] temp,
                                     EXP_map[hp.ang2pix(NSIDE,th,ph)])
 
 
-        # Sample distances from PSF for each source photon.
+        # Sample distances from PSF and energy for each source photon.
         dist = pdf(num_phot)
+        E = pdf_E_samp(num_phot)
+        Eind = np.digitize( E, Ebins )
 
         # Create a rotation matrix for each source.
         # Shift phi coord pi/2 to correspond to center of HEALPix map durring
@@ -94,7 +103,7 @@ cpdef double[::1] run(int N, double[::1] flux_arr, double[::1] temp,
             # Determine pixel location from x,y,z values.
             posit = hp.vec2pix(NSIDE,Xp[0],Xp[1],Xp[2])
             # Add a count to that pixel on the map.
-            map_arr[posit] += 1
+            map_arr[Eind[j]-1,posit] += 1
             j += 1
         i += 1
 

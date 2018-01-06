@@ -14,7 +14,7 @@ import make_map as mm
 
 import numpy as np
 
-def run(n,F,A,temp,exp,psf_r,name="map",save=False):
+def run(n,F,A,temp,exp,psf_r,Ebins,Edep,Eparam,name="map",save=False):
     """ Brings together serveral programs to run point source Monte Carlo by
         reading in template, source count distribution parameters, exposure 
         map, and the user defined PSF.
@@ -25,10 +25,12 @@ def run(n,F,A,temp,exp,psf_r,name="map",save=False):
             :param temp: HEALPix numpy array of template
             :param exp: HEALPix numpy array of exposure map
             :param psf_r: user defined point spread function
+            :param Ebins: numpy array of energy bin edges
+            :param Edep: user defined energy dependence
             :param name: string for the name of output .npy file
             :param save: option to save map to .npy file
 
-            :returns: HEALPix format numpy array of simulated map
+            :returns: HEALPix format numpy array of simulated maps
     """
     # Int. SCD to find mean couts, Poisson draws for # of sources in template
     num_src = iscd.run(n,F,A,temp)
@@ -37,7 +39,8 @@ def run(n,F,A,temp,exp,psf_r,name="map",save=False):
     flux_arr = cf.run(num_src,n,F)
 
     # Generate simulated counts map
-    map_arr = np.asarray(mm.run(num_src,flux_arr,temp,exp,psf_r))
+    maps = mm.run(num_src,flux_arr,temp,exp,psf_r,Ebins,Edep,Eparam)
+    map_arr = np.asarray(maps[:])
 
     # Save the file as an .npy file
     if save:
